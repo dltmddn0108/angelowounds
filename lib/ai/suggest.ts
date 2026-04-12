@@ -42,12 +42,18 @@ export interface SuggestOptions {
   model: string;
   batchSize?: number;
   topK?: number;
+  /** Maximum number of new link suggestions per source note. */
+  maxLinksPerNote?: number;
   onBatch?: (info: {
     index: number;
     total: number;
     cacheReadTokens?: number;
     cacheCreationTokens?: number;
   }) => void;
+  /** Resume from this batch index (0-based). */
+  resumeFromBatch?: number;
+  /** Called after each batch completes, for checkpoint persistence. */
+  onCheckpoint?: (completedBatchIndex: number) => void;
 }
 
 export interface SuggestResult {
@@ -68,6 +74,8 @@ export async function runSuggestionPipeline(
 ): Promise<SuggestResult> {
   const batchSize = opts.batchSize ?? 8;
   const topK = opts.topK ?? 20;
+  const maxPerNote = opts.maxLinksPerNote ?? Infinity;
+  const resumeFrom = opts.resumeFromBatch ?? 0;
   const parsedMap = new Map(parsedList.map((n) => [n.entry.path, n]));
   const glossary = buildGlossary(parsedList);
 
@@ -89,7 +97,10 @@ export async function runSuggestionPipeline(
     batches.push(candidates.slice(i, i + batchSize));
   }
 
-  for (let bi = 0; bi < batches.length; bi++) {
+  // Track per-source-note suggestion counts for maxLinksPerNote.
+  const countsPerNote = new Map<string, number>();
+
+  for (let bi = resumeFrom; bi < batches.length; bi++) {
     const batch = batches[bi];
     const userMessage = buildBatchMessage(parsedMap, batch, topK);
 
@@ -137,6 +148,8 @@ export async function runSuggestionPipeline(
       }
       for (const r of parsed.data.results) {
         for (const s of r.suggestions) {
+          const count = countsPerNote.get(r.source_path) ?? 0;
+          if (count >= maxPerNote) continue;
           out.push({
             sourcePath: r.source_path,
             targetPath: s.target_path,
@@ -146,9 +159,12 @@ export async function runSuggestionPipeline(
             confidence: s.confidence,
             reasoning: s.reasoning,
           });
+          countsPerNote.set(r.source_path, count + 1);
         }
       }
     }
+
+    opts.onCheckpoint?.(bi);
   }
 
   return { suggestions: out, totals };

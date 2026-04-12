@@ -27,6 +27,8 @@ export interface FindCandidatesOptions {
    * source already links to the target.
    */
   excludePairs?: Set<string>;
+  /** If true, once A→B is proposed, B→A is excluded from later notes. */
+  bidirectionalDedup?: boolean;
 }
 
 export function pairKey(sourcePath: string, targetPath: string): string {
@@ -50,6 +52,10 @@ export function findCandidates(
     }
   }
 
+  const biDedup = opts.bidirectionalDedup ?? true;
+  // Track proposed pairs so A→B prevents B→A in the same scan.
+  const proposed = new Set<string>();
+
   const results: CandidateSet[] = [];
   for (let i = 0; i < embeddings.length; i++) {
     const src = embeddings[i];
@@ -64,12 +70,18 @@ export function findCandidates(
       if (tgt.mean.length === 0) continue;
       const key = pairKey(src.path, tgt.path);
       if (exclude.has(key)) continue;
+      if (biDedup && proposed.has(pairKey(tgt.path, src.path))) continue;
       if (isAlreadyLinked(src.path, tgt.path, parsed, alreadyLinked)) continue;
       const score = cosine(src.mean, tgt.mean);
       scored.push({ targetPath: tgt.path, score });
     }
     scored.sort((a, b) => b.score - a.score);
-    results.push({ sourcePath: src.path, candidates: scored.slice(0, topK) });
+    const selected = scored.slice(0, topK);
+    // Record selected pairs for bidirectional dedup.
+    if (biDedup) {
+      for (const c of selected) proposed.add(pairKey(src.path, c.targetPath));
+    }
+    results.push({ sourcePath: src.path, candidates: selected });
   }
 
   return results;

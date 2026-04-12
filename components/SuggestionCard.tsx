@@ -20,7 +20,7 @@ export default function SuggestionCard({ item }: Props) {
 
   return (
     <article
-      className={`space-y-2 rounded border p-3 text-sm transition ${statusTone}`}
+      className={`space-y-2 rounded border p-3 text-sm transition-all duration-300 hover:shadow-md ${statusTone}`}
     >
       <header className="flex items-center gap-2">
         <span className="font-mono text-xs text-neutral-500">
@@ -35,7 +35,7 @@ export default function SuggestionCard({ item }: Props) {
               : "bg-purple-100 text-purple-800 dark:bg-purple-950/40 dark:text-purple-200"
           }`}
         >
-          {item.insertionMode}
+          {item.insertionMode === "inline" ? "인라인" : "참고"}
         </span>
         <span className="rounded bg-neutral-200 px-2 py-0.5 text-xs dark:bg-neutral-700">
           {(item.confidence * 100).toFixed(0)}%

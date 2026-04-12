@@ -40,6 +40,28 @@ export default function LandingPage() {
       <ApiKeyInput onChange={setKeyStored} />
 
       <section className="space-y-3">
+        <h2 className="text-xl font-medium">작동 방식</h2>
+        <div className="grid grid-cols-4 gap-4 text-center text-sm">
+          <div className="space-y-1 rounded border border-neutral-200 p-3 dark:border-neutral-800">
+            <p className="font-medium">1. 스캔</p>
+            <p className="text-xs text-neutral-500">보관함 노트를 읽고 구조를 파악합니다.</p>
+          </div>
+          <div className="space-y-1 rounded border border-neutral-200 p-3 dark:border-neutral-800">
+            <p className="font-medium">2. 임베딩</p>
+            <p className="text-xs text-neutral-500">노트 간 의미적 유사도를 계산합니다.</p>
+          </div>
+          <div className="space-y-1 rounded border border-neutral-200 p-3 dark:border-neutral-800">
+            <p className="font-medium">3. AI 분석</p>
+            <p className="text-xs text-neutral-500">Claude가 링크 후보를 생성합니다.</p>
+          </div>
+          <div className="space-y-1 rounded border border-neutral-200 p-3 dark:border-neutral-800">
+            <p className="font-medium">4. 리뷰</p>
+            <p className="text-xs text-neutral-500">제안을 검토하고 승인한 것만 적용합니다.</p>
+          </div>
+        </div>
+      </section>
+
+      <section className="space-y-3">
         <h2 className="text-xl font-medium">다음 단계</h2>
         <ol className="list-decimal space-y-1 pl-6 text-sm text-neutral-700 dark:text-neutral-300">
           <li>Anthropic API 키 입력 (위에서 완료)</li>

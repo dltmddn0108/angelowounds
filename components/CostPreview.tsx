@@ -38,10 +38,15 @@ export default function CostPreview({
         <dt className="text-neutral-500">출력 토큰 (추정)</dt>
         <dd>{estimate.estimatedOutputTokens.toLocaleString()}</dd>
         <dt className="text-neutral-500">예상 비용</dt>
-        <dd className="font-mono">${estimate.estimatedUsd.toFixed(4)} USD</dd>
+        <dd className={`font-mono ${estimate.estimatedUsd > 1.0 ? "font-semibold text-amber-600 dark:text-amber-400" : ""}`}>
+          ${estimate.estimatedUsd.toFixed(4)} USD
+        </dd>
         <dt className="text-neutral-500">예상 시간</dt>
         <dd>~{estimate.estimatedSeconds}s</dd>
       </dl>
+      <p className="text-xs text-neutral-400 dark:text-neutral-500">
+        프롬프트 캐싱이 적용되면 실제 비용은 위 추정치보다 낮을 수 있습니다.
+      </p>
       <div className="flex gap-2">
         <button
           onClick={onConfirm}

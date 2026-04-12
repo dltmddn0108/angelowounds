@@ -14,8 +14,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ko">
-      <body>
+      <body className="antialiased">
         <div className="mx-auto max-w-5xl px-6 py-10">{children}</div>
+        <footer className="border-t border-neutral-200 py-6 text-center text-xs text-neutral-400 dark:border-neutral-800 dark:text-neutral-600">
+          Obsidian Auto-Linker &middot; Your notes never leave your browser
+        </footer>
       </body>
     </html>
   );

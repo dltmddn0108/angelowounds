@@ -25,6 +25,8 @@ export default function VaultPage() {
   const setParsed = useSessionStore((s) => s.setParsed);
   const setCandidates = useSessionStore((s) => s.setCandidates);
   const loadSettings = useSessionStore((s) => s.loadSettings);
+  const saveCheckpoint = useSessionStore((s) => s.saveCheckpoint);
+  const clearCheckpoint = useSessionStore((s) => s.clearCheckpoint);
   const setItems = useReviewStore((s) => s.setItems);
 
   const [stage, setStage] = useState<Stage>("idle");
@@ -107,6 +109,7 @@ export default function VaultPage() {
         model: settings.model,
         batchSize: settings.batchSize,
         topK: settings.topK,
+        maxLinksPerNote: settings.maxLinksPerNote,
         onBatch: (info) => {
           setScanDone(info.index + 1);
           setScanDetail(
@@ -115,7 +118,11 @@ export default function VaultPage() {
               : "",
           );
         },
+        onCheckpoint: (completedBatch) => {
+          saveCheckpoint(completedBatch);
+        },
       });
+      await clearCheckpoint();
       setItems(
         result.suggestions.filter((s) => s.confidence >= settings.confidenceFloor),
       );

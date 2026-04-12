@@ -7,11 +7,12 @@
 "use client";
 
 import { create } from "zustand";
-import { get, set } from "idb-keyval";
+import { get, set, del } from "idb-keyval";
 import type { ParsedNote } from "../vault/types";
 import type { CandidateSet } from "../ai/candidates";
 
 const SETTINGS_KEY = "oal:settings";
+const CHECKPOINT_KEY = "oal:checkpoint";
 
 export interface Settings {
   model: string;
@@ -35,12 +36,20 @@ export const DEFAULT_SETTINGS: Settings = {
   cloudSynced: "unknown",
 };
 
+export interface ScanCheckpoint {
+  /** The batch index that was last fully completed (0-based). */
+  completedBatch: number;
+  /** Timestamp for display. */
+  savedAt: string;
+}
+
 interface SessionState {
   vault: FileSystemDirectoryHandle | null;
   vaultName: string;
   parsed: ParsedNote[];
   candidates: CandidateSet[];
   settings: Settings;
+  checkpoint: ScanCheckpoint | null;
 
   setVault(handle: FileSystemDirectoryHandle | null): void;
   setParsed(parsed: ParsedNote[]): void;
@@ -48,6 +57,9 @@ interface SessionState {
   setSettings(patch: Partial<Settings>): void;
   loadSettings(): Promise<void>;
   saveSettings(): Promise<void>;
+  saveCheckpoint(completedBatch: number): Promise<void>;
+  loadCheckpoint(): Promise<ScanCheckpoint | null>;
+  clearCheckpoint(): Promise<void>;
 }
 
 export const useSessionStore = create<SessionState>((setState, getState) => ({
@@ -56,6 +68,7 @@ export const useSessionStore = create<SessionState>((setState, getState) => ({
   parsed: [],
   candidates: [],
   settings: DEFAULT_SETTINGS,
+  checkpoint: null,
 
   setVault(handle) {
     setState({ vault: handle, vaultName: handle?.name ?? "" });
@@ -75,5 +88,22 @@ export const useSessionStore = create<SessionState>((setState, getState) => ({
   },
   async saveSettings() {
     await set(SETTINGS_KEY, getState().settings);
+  },
+  async saveCheckpoint(completedBatch: number) {
+    const cp: ScanCheckpoint = {
+      completedBatch,
+      savedAt: new Date().toISOString(),
+    };
+    await set(CHECKPOINT_KEY, cp);
+    setState({ checkpoint: cp });
+  },
+  async loadCheckpoint() {
+    const cp = await get<ScanCheckpoint>(CHECKPOINT_KEY);
+    setState({ checkpoint: cp ?? null });
+    return cp ?? null;
+  },
+  async clearCheckpoint() {
+    await del(CHECKPOINT_KEY);
+    setState({ checkpoint: null });
   },
 }));
