@@ -22,6 +22,7 @@ export default function ReviewToolbar({
   const items = useReviewStore((s) => s.items);
   const floor = useReviewStore((s) => s.confidenceFloor);
   const setFloor = useReviewStore((s) => s.setConfidenceFloor);
+  const setAllStatus = useReviewStore((s) => s.setAllStatus);
   const undoLog = useReviewStore((s) => s.undoLog);
 
   const accepted = items.filter((i) => i.status === "accepted").length;
@@ -44,6 +45,20 @@ export default function ReviewToolbar({
         />
       </label>
       <div className="ml-auto flex gap-2">
+        <button
+          onClick={() => setAllStatus("accepted")}
+          disabled={items.length === 0}
+          className="rounded border border-emerald-400 px-2 py-1.5 text-xs text-emerald-700 disabled:opacity-40 dark:border-emerald-500/40 dark:text-emerald-300"
+        >
+          전체 수락
+        </button>
+        <button
+          onClick={() => setAllStatus("rejected")}
+          disabled={items.length === 0}
+          className="rounded border border-neutral-300 px-2 py-1.5 text-xs disabled:opacity-40 dark:border-neutral-700"
+        >
+          전체 거절
+        </button>
         <button
           onClick={onApply}
           disabled={applying || accepted === 0}

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useSessionStore, DEFAULT_SETTINGS } from "@/lib/store/session";
 
-const MODELS = ["claude-sonnet-4-5", "claude-haiku-4-5-20251001"];
+const MODELS = ["claude-sonnet-4-5-20250514", "claude-haiku-4-5-20251001"];
 
 export default function SettingsPage() {
   const settings = useSessionStore((s) => s.settings);

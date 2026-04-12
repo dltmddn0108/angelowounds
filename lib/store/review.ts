@@ -30,6 +30,7 @@ interface ReviewState {
 
   setItems(items: LinkSuggestion[]): void;
   setStatus(id: string, status: ReviewStatus): void;
+  setAllStatus(status: ReviewStatus): void;
   updateAnchor(id: string, anchor: string): void;
   setConfidenceFloor(v: number): void;
   recordUndo(entry: UndoEntry): void;
@@ -57,6 +58,11 @@ export const useReviewStore = create<ReviewState>((set) => ({
   setStatus(id, status) {
     set((st) => ({
       items: st.items.map((it) => (it.id === id ? { ...it, status } : it)),
+    }));
+  },
+  setAllStatus(status) {
+    set((st) => ({
+      items: st.items.map((it) => ({ ...it, status })),
     }));
   },
   updateAnchor(id, anchor) {

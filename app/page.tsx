@@ -47,7 +47,7 @@ export default function LandingPage() {
           <li>Claude가 제안하는 링크 검토 및 수락</li>
           <li>승인된 편집을 보관함에 기록 (원본은 <code>.auto-linker-backup/</code>로 자동 백업)</li>
         </ol>
-        <div className="pt-2">
+        <div className="flex gap-3 pt-2">
           <Link
             href="/vault"
             className={`inline-flex items-center rounded bg-neutral-900 px-4 py-2 text-sm font-medium text-white transition dark:bg-neutral-100 dark:text-neutral-900 ${
@@ -55,6 +55,12 @@ export default function LandingPage() {
             }`}
           >
             보관함 연결하기 →
+          </Link>
+          <Link
+            href="/settings"
+            className="inline-flex items-center rounded border border-neutral-300 px-4 py-2 text-sm hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800"
+          >
+            설정
           </Link>
         </div>
       </section>

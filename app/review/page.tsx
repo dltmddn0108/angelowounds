@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import ReviewToolbar from "@/components/ReviewToolbar";
 import SuggestionCard from "@/components/SuggestionCard";
 import { useReviewStore } from "@/lib/store/review";
 import { useSessionStore } from "@/lib/store/session";
 import {
+  loadCachedDirectory,
   openBackupDir,
   readNoteBytes,
   writeBackup,
@@ -25,9 +26,22 @@ export default function ReviewPage() {
   const parsed = useSessionStore((s) => s.parsed);
   const settings = useSessionStore((s) => s.settings);
 
+  const setVault = useSessionStore((s) => s.setVault);
+
   const [applying, setApplying] = useState(false);
   const [stats, setStats] = useState({ applied: 0, demoted: 0, skipped: 0 });
   const [error, setError] = useState<string | null>(null);
+
+  // Attempt to rehydrate vault handle from idb-keyval on mount (page refresh)
+  useEffect(() => {
+    if (vault) return;
+    loadCachedDirectory().then(async (handle) => {
+      if (!handle) return;
+      // @ts-expect-error -- wicg-file-system-access
+      const perm = await handle.queryPermission({ mode: "readwrite" });
+      if (perm === "granted") setVault(handle);
+    });
+  }, [vault, setVault]);
 
   const visible = useMemo(
     () => items.filter((it) => it.confidence >= floor),
@@ -126,7 +140,17 @@ export default function ReviewPage() {
         </div>
       )}
 
-      {grouped.length === 0 && (
+      {grouped.length === 0 && !vault && (
+        <div className="rounded border border-amber-400 bg-amber-50 p-6 text-center text-sm text-amber-900 dark:border-amber-500/40 dark:bg-amber-950/30 dark:text-amber-200">
+          보관함 연결이 필요합니다.{" "}
+          <Link href="/vault" className="font-medium underline">
+            스캔 페이지로 이동
+          </Link>
+          하여 보관함을 먼저 스캔해 주세요.
+        </div>
+      )}
+
+      {grouped.length === 0 && vault && (
         <div className="rounded border border-neutral-200 p-6 text-center text-sm text-neutral-500 dark:border-neutral-800">
           표시할 제안이 없습니다. 스캔을 먼저 실행하거나 신뢰도 임계값을
           낮춰 보세요.

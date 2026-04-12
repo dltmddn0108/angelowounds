@@ -25,7 +25,7 @@ export interface Settings {
 }
 
 export const DEFAULT_SETTINGS: Settings = {
-  model: "claude-sonnet-4-5",
+  model: "claude-sonnet-4-5-20250514",
   batchSize: 8,
   topK: 20,
   maxLinksPerNote: 5,

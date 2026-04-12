@@ -130,9 +130,14 @@ export default function VaultPage() {
     <main className="space-y-6">
       <header className="flex items-baseline justify-between">
         <h1 className="text-2xl font-semibold">보관함 스캔</h1>
-        <Link href="/" className="text-sm text-neutral-500 hover:underline">
-          ← 홈
-        </Link>
+        <div className="flex gap-3">
+          <Link href="/settings" className="text-sm text-neutral-500 hover:underline">
+            설정
+          </Link>
+          <Link href="/" className="text-sm text-neutral-500 hover:underline">
+            ← 홈
+          </Link>
+        </div>
       </header>
 
       <VaultPicker />

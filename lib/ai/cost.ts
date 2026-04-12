@@ -13,7 +13,7 @@ export const MODEL_PRICES: Record<
   string,
   { input: number; cachedRead: number; output: number }
 > = {
-  "claude-sonnet-4-5": { input: 3.0, cachedRead: 0.3, output: 15.0 },
+  "claude-sonnet-4-5-20250514": { input: 3.0, cachedRead: 0.3, output: 15.0 },
   "claude-haiku-4-5-20251001": { input: 1.0, cachedRead: 0.1, output: 5.0 },
 };
 
@@ -50,7 +50,7 @@ export function estimateCost(
   const batchSize = opts.batchSize ?? 8;
   const topK = opts.topK ?? 20;
   const price =
-    MODEL_PRICES[opts.model] ?? MODEL_PRICES["claude-sonnet-4-5"];
+    MODEL_PRICES[opts.model] ?? MODEL_PRICES["claude-sonnet-4-5-20250514"];
 
   // Glossary is sent once (cached) and reused across every batch.
   const glossaryText = parsed

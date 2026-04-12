@@ -37,7 +37,7 @@ describe("cost estimation", () => {
         .map((o) => ({ targetPath: o.entry.path, score: 0.5 })),
     }));
     const est = estimateCost(notes, candidates, {
-      model: "claude-sonnet-4-5",
+      model: "claude-sonnet-4-5-20250514",
       batchSize: 2,
       topK: 20,
     });
