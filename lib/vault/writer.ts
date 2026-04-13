@@ -98,18 +98,29 @@ function planInlineEdit(
   if (span.length === 0) return null;
   // Only search body text; never match inside the frontmatter.
   const fmLen = parsed.protectedRanges.find((r) => r.kind === "frontmatter")?.end ?? 0;
-  const searchFrom = fmLen;
-  const idx = parsed.source.indexOf(span, searchFrom);
-  if (idx === -1) return null;
-  const end = idx + span.length;
-  if (overlapsProtected(idx, end, parsed.protectedRanges)) return null;
-  const anchor = s.anchorText && s.anchorText.length > 0 ? s.anchorText : span;
-  const target = stripMdExtension(s.targetPath);
-  const replacement =
-    anchor === target
-      ? `[[${target}]]`
-      : `[[${target}|${anchor}]]`;
-  return { start: idx, end, replacement };
+
+  // Walk every occurrence of the span in the body, pick the first one whose
+  // byte range does not overlap any protected region. This matters when the
+  // same phrase appears once inside a code fence and again in normal prose —
+  // we want the prose match, not to give up on the whole suggestion.
+  let from = fmLen;
+  while (from < parsed.source.length) {
+    const idx = parsed.source.indexOf(span, from);
+    if (idx === -1) return null;
+    const end = idx + span.length;
+    if (!overlapsProtected(idx, end, parsed.protectedRanges)) {
+      const anchor = s.anchorText && s.anchorText.length > 0 ? s.anchorText : span;
+      const target = stripMdExtension(s.targetPath);
+      const replacement =
+        anchor === target
+          ? `[[${target}]]`
+          : `[[${target}|${anchor}]]`;
+      return { start: idx, end, replacement };
+    }
+    // Advance past this match and try again.
+    from = idx + 1;
+  }
+  return null;
 }
 
 function appendSeeAlsoSection(

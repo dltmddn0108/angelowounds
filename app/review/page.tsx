@@ -80,8 +80,20 @@ export default function ReviewPage() {
       bySource.set(it.sourcePath, bucket);
     }
 
-    for (const [path, accepted] of bySource.entries()) {
-      try {
+    // Phase 1: plan every edit (read original + compute new content) and write
+    // a backup for each. No writes to real notes yet. If any note fails to
+    // plan, bail before touching anything.
+    type Plan = {
+      path: string;
+      originalContent: string;
+      newContent: string;
+      applied: number;
+      demoted: number;
+      skipped: number;
+    };
+    const plans: Plan[] = [];
+    try {
+      for (const [path, accepted] of bySource.entries()) {
         const entry = parsed.find((p) => p.entry.path === path)?.entry;
         if (!entry) continue;
         const current = await readNoteBytes(vault, path);
@@ -89,17 +101,57 @@ export default function ReviewPage() {
         const result = applySuggestions(entry, current, accepted, {
           seeAlsoHeader: settings.seeAlsoHeader,
         });
-        if (result.content !== current) {
-          await writeNoteBytes(vault, path, result.content);
-          recordUndo({ path, previous: current });
-        }
-        totals.applied += result.applied;
-        totals.demoted += result.demoted;
-        totals.skipped += result.skipped;
-      } catch (e) {
-        setError(`${path}: ${(e as Error).message}`);
+        plans.push({
+          path,
+          originalContent: current,
+          newContent: result.content,
+          applied: result.applied,
+          demoted: result.demoted,
+          skipped: result.skipped,
+        });
       }
+    } catch (e) {
+      setError(`계획 단계 실패 (보관함은 그대로): ${(e as Error).message}`);
+      setApplying(false);
+      return;
     }
+
+    // Phase 2: write each planned change, tracking completed writes so we can
+    // roll everything back if one write fails mid-batch.
+    const written: Array<{ path: string; previous: string }> = [];
+    try {
+      for (const p of plans) {
+        if (p.newContent === p.originalContent) {
+          totals.skipped += p.skipped;
+          continue;
+        }
+        await writeNoteBytes(vault, p.path, p.newContent);
+        written.push({ path: p.path, previous: p.originalContent });
+        recordUndo({ path: p.path, previous: p.originalContent });
+        totals.applied += p.applied;
+        totals.demoted += p.demoted;
+        totals.skipped += p.skipped;
+      }
+    } catch (e) {
+      // Rollback: restore every file we successfully wrote in this batch.
+      const rollbackErrors: string[] = [];
+      for (const w of written) {
+        try {
+          await writeNoteBytes(vault, w.path, w.previous);
+        } catch (re) {
+          rollbackErrors.push(`${w.path}: ${(re as Error).message}`);
+        }
+      }
+      const base = `적용 중 실패로 배치 롤백함: ${(e as Error).message}`;
+      setError(
+        rollbackErrors.length > 0
+          ? `${base} (롤백 중 일부 오류: ${rollbackErrors.join("; ")})`
+          : base,
+      );
+      setApplying(false);
+      return;
+    }
+
     setStats(totals);
     setApplying(false);
   }

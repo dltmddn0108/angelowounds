@@ -113,6 +113,56 @@ describe("applySuggestions — safety", () => {
     expect(result.content).toBe(src);
   });
 
+  it("falls through protected match to the next non-protected occurrence", () => {
+    const src = `# 제목
+
+\`\`\`ts
+// 리액트 훅
+const foo = 1;
+\`\`\`
+
+본문에서 리액트 훅을 설명합니다.
+`;
+    const suggestion: LinkSuggestion = {
+      sourcePath: "s.md",
+      targetPath: "리액트-훅.md",
+      insertionMode: "inline",
+      targetSpan: "리액트 훅",
+      anchorText: "리액트 훅",
+      confidence: 0.9,
+      reasoning: "test",
+    };
+    const result = applySuggestions(entry("s.md"), src, [suggestion]);
+    expect(result.applied).toBe(1);
+    expect(result.demoted).toBe(0);
+    expect(result.content).toContain("// 리액트 훅");
+    expect(result.content).toContain("[[리액트-훅|리액트 훅]]을 설명합니다");
+  });
+
+  it("demotes to see_also only when every occurrence is inside protected ranges", () => {
+    const src = `# 제목
+
+\`\`\`ts
+const x = useState(0);
+\`\`\`
+
+본문.
+`;
+    const suggestion: LinkSuggestion = {
+      sourcePath: "s.md",
+      targetPath: "State.md",
+      insertionMode: "inline",
+      targetSpan: "useState",
+      anchorText: "useState",
+      confidence: 0.9,
+      reasoning: "test",
+    };
+    const result = applySuggestions(entry("s.md"), src, [suggestion]);
+    expect(result.demoted).toBe(1);
+    expect(result.content).toContain("## See also");
+    expect(result.content).toContain("const x = useState(0);");
+  });
+
   it("property: protected ranges are never modified for arbitrary inline spans", () => {
     fc.assert(
       fc.property(

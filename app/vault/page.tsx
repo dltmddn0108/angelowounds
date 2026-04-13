@@ -27,6 +27,8 @@ export default function VaultPage() {
   const loadSettings = useSessionStore((s) => s.loadSettings);
   const saveCheckpoint = useSessionStore((s) => s.saveCheckpoint);
   const clearCheckpoint = useSessionStore((s) => s.clearCheckpoint);
+  const loadCheckpoint = useSessionStore((s) => s.loadCheckpoint);
+  const checkpoint = useSessionStore((s) => s.checkpoint);
   const setItems = useReviewStore((s) => s.setItems);
 
   const [stage, setStage] = useState<Stage>("idle");
@@ -37,10 +39,12 @@ export default function VaultPage() {
   const [estimate, setEstimate] = useState<CostEstimate | null>(null);
   const [localParsed, setLocalParsed] = useState<ParsedNote[]>([]);
   const [localCandidates, setLocalCandidates] = useState<ReturnType<typeof findCandidates>>([]);
+  const [resumeFromBatch, setResumeFromBatch] = useState<number | null>(null);
 
   useEffect(() => {
     loadSettings();
-  }, [loadSettings]);
+    loadCheckpoint();
+  }, [loadSettings, loadCheckpoint]);
 
   async function runScan() {
     if (!vault) return;
@@ -104,12 +108,15 @@ export default function VaultPage() {
       if (!apiKey) throw new Error("API 키가 없습니다. 홈 화면에서 입력하세요.");
       setScanTotal(estimate.batches);
       setScanDone(0);
+      const startBatch = resumeFromBatch ?? 0;
+      if (startBatch > 0) setScanDone(startBatch);
       const result = await runSuggestionPipeline(localParsed, localCandidates, {
         apiKey,
         model: settings.model,
         batchSize: settings.batchSize,
         topK: settings.topK,
         maxLinksPerNote: settings.maxLinksPerNote,
+        resumeFromBatch: startBatch,
         onBatch: (info) => {
           setScanDone(info.index + 1);
           setScanDetail(
@@ -123,6 +130,7 @@ export default function VaultPage() {
         },
       });
       await clearCheckpoint();
+      setResumeFromBatch(null);
       setItems(
         result.suggestions.filter((s) => s.confidence >= settings.confidenceFloor),
       );
@@ -149,6 +157,33 @@ export default function VaultPage() {
 
       <VaultPicker />
       <CloudSyncWarning />
+
+      {checkpoint && stage === "idle" && localCandidates.length > 0 && (
+        <section className="space-y-3 rounded border border-amber-400 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-500/40 dark:bg-amber-950/30 dark:text-amber-200">
+          <h3 className="font-medium">이전 스캔을 이어서 진행할 수 있습니다</h3>
+          <p className="text-xs">
+            마지막으로 완료된 배치: {checkpoint.completedBatch + 1}번 (저장 시각{" "}
+            {new Date(checkpoint.savedAt).toLocaleString("ko-KR")})
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setResumeFromBatch(checkpoint.completedBatch + 1)}
+              className="rounded border border-amber-500 px-3 py-1 text-xs hover:bg-amber-100 dark:hover:bg-amber-900/30"
+            >
+              여기서 이어서 시작
+            </button>
+            <button
+              onClick={async () => {
+                await clearCheckpoint();
+                setResumeFromBatch(null);
+              }}
+              className="rounded border border-neutral-400 px-3 py-1 text-xs hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800"
+            >
+              체크포인트 삭제
+            </button>
+          </div>
+        </section>
+      )}
 
       {vault && stage === "idle" && (
         <button
