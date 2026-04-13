@@ -5,6 +5,12 @@ import { useSessionStore } from "@/lib/store/session";
 export default function CloudSyncWarning() {
   const cloud = useSessionStore((s) => s.settings.cloudSynced);
   const setSettings = useSessionStore((s) => s.setSettings);
+  const saveSettings = useSessionStore((s) => s.saveSettings);
+
+  async function answer(value: "yes" | "no") {
+    setSettings({ cloudSynced: value });
+    await saveSettings();
+  }
 
   if (cloud !== "unknown") return null;
   return (
@@ -18,13 +24,13 @@ export default function CloudSyncWarning() {
       </p>
       <div className="flex gap-2">
         <button
-          onClick={() => setSettings({ cloudSynced: "yes" })}
+          onClick={() => answer("yes")}
           className="rounded border border-amber-500 px-3 py-1 text-sm hover:bg-amber-100 dark:hover:bg-amber-900/30"
         >
           네, 동기화하고 있어요 (주의함)
         </button>
         <button
-          onClick={() => setSettings({ cloudSynced: "no" })}
+          onClick={() => answer("no")}
           className="rounded border border-neutral-400 px-3 py-1 text-sm hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800"
         >
           아니요, 로컬 전용이에요

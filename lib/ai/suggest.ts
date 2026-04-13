@@ -54,6 +54,8 @@ export interface SuggestOptions {
   resumeFromBatch?: number;
   /** Called after each batch completes, for checkpoint persistence. */
   onCheckpoint?: (completedBatchIndex: number) => void;
+  /** Abort signal; when aborted the pipeline stops at the next batch boundary. */
+  signal?: AbortSignal;
 }
 
 export interface SuggestResult {
@@ -101,6 +103,10 @@ export async function runSuggestionPipeline(
   const countsPerNote = new Map<string, number>();
 
   for (let bi = resumeFrom; bi < batches.length; bi++) {
+    if (opts.signal?.aborted) {
+      // User canceled; stop cleanly. Checkpoint reflects the last completed batch.
+      break;
+    }
     const batch = batches[bi];
     const userMessage = buildBatchMessage(parsedMap, batch, topK);
 

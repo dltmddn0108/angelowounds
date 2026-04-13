@@ -40,25 +40,34 @@ export default function VaultPage() {
   const [localParsed, setLocalParsed] = useState<ParsedNote[]>([]);
   const [localCandidates, setLocalCandidates] = useState<ReturnType<typeof findCandidates>>([]);
   const [resumeFromBatch, setResumeFromBatch] = useState<number | null>(null);
+  const [abortCtl, setAbortCtl] = useState<AbortController | null>(null);
 
   useEffect(() => {
     loadSettings();
     loadCheckpoint();
   }, [loadSettings, loadCheckpoint]);
 
+  function cancelScan() {
+    abortCtl?.abort();
+  }
+
   async function runScan() {
     if (!vault) return;
     setError(null);
+    const ctl = new AbortController();
+    setAbortCtl(ctl);
     try {
       setStage("scanning");
       setScanDetail("파일 수집");
       const { files } = await scanVault(vault, settings.ignoreGlobs);
+      if (ctl.signal.aborted) throw new DOMException("취소됨", "AbortError");
       setScanTotal(files.length);
       setScanDone(0);
 
       setStage("parsing");
       const parsedList: ParsedNote[] = [];
       for (let i = 0; i < files.length; i++) {
+        if (ctl.signal.aborted) throw new DOMException("취소됨", "AbortError");
         const { entry, source } = files[i];
         parsedList.push(parseNote(entry, source));
         setScanDone(i + 1);
@@ -69,6 +78,7 @@ export default function VaultPage() {
 
       setStage("embedding");
       const embeddings = await embedVault(parsedList, {
+        signal: ctl.signal,
         onProgress: (p) => {
           if (p.note) {
             setScanTotal(p.note.total);
@@ -94,14 +104,24 @@ export default function VaultPage() {
       setEstimate(est);
       setStage("preview");
     } catch (e) {
-      setError((e as Error).message);
-      setStage("error");
+      const err = e as Error;
+      if (err.name === "AbortError") {
+        setError("스캔이 사용자에 의해 취소되었습니다.");
+        setStage("idle");
+      } else {
+        setError(err.message);
+        setStage("error");
+      }
+    } finally {
+      setAbortCtl(null);
     }
   }
 
   async function runSuggest() {
     if (!estimate) return;
     setError(null);
+    const ctl = new AbortController();
+    setAbortCtl(ctl);
     try {
       setStage("suggesting");
       const apiKey = await loadApiKey();
@@ -117,6 +137,7 @@ export default function VaultPage() {
         topK: settings.topK,
         maxLinksPerNote: settings.maxLinksPerNote,
         resumeFromBatch: startBatch,
+        signal: ctl.signal,
         onBatch: (info) => {
           setScanDone(info.index + 1);
           setScanDetail(
@@ -136,8 +157,16 @@ export default function VaultPage() {
       );
       setStage("done");
     } catch (e) {
-      setError((e as Error).message);
-      setStage("error");
+      const err = e as Error;
+      if (err.name === "AbortError") {
+        setError("제안 생성이 취소되었습니다. 체크포인트가 저장되어 다시 시작하면 이어서 진행됩니다.");
+        setStage("idle");
+      } else {
+        setError(err.message);
+        setStage("error");
+      }
+    } finally {
+      setAbortCtl(null);
     }
   }
 
@@ -195,20 +224,30 @@ export default function VaultPage() {
       )}
 
       {(stage === "scanning" || stage === "parsing" || stage === "embedding" || stage === "searching") && (
-        <ScanProgress
-          label={
-            stage === "scanning"
-              ? "파일 수집"
-              : stage === "parsing"
-              ? "파싱"
-              : stage === "embedding"
-              ? "임베딩"
-              : "후보 검색"
-          }
-          current={scanDone}
-          total={scanTotal}
-          detail={scanDetail}
-        />
+        <div className="space-y-3">
+          <ScanProgress
+            label={
+              stage === "scanning"
+                ? "파일 수집"
+                : stage === "parsing"
+                ? "파싱"
+                : stage === "embedding"
+                ? "임베딩"
+                : "후보 검색"
+            }
+            current={scanDone}
+            total={scanTotal}
+            detail={scanDetail}
+          />
+          {abortCtl && (
+            <button
+              onClick={cancelScan}
+              className="rounded border border-red-400 px-3 py-1.5 text-xs text-red-700 hover:bg-red-50 dark:border-red-500/40 dark:text-red-300 dark:hover:bg-red-950/30"
+            >
+              취소
+            </button>
+          )}
+        </div>
       )}
 
       {stage === "preview" && estimate && (
@@ -221,12 +260,22 @@ export default function VaultPage() {
       )}
 
       {stage === "suggesting" && (
-        <ScanProgress
-          label="Claude 제안 생성"
-          current={scanDone}
-          total={scanTotal}
-          detail={scanDetail}
-        />
+        <div className="space-y-3">
+          <ScanProgress
+            label="Claude 제안 생성"
+            current={scanDone}
+            total={scanTotal}
+            detail={scanDetail}
+          />
+          {abortCtl && (
+            <button
+              onClick={cancelScan}
+              className="rounded border border-red-400 px-3 py-1.5 text-xs text-red-700 hover:bg-red-50 dark:border-red-500/40 dark:text-red-300 dark:hover:bg-red-950/30"
+            >
+              취소 (체크포인트는 유지됩니다)
+            </button>
+          )}
+        </div>
       )}
 
       {stage === "done" && (

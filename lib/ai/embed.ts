@@ -55,6 +55,7 @@ export async function embedVault(
   opts: {
     model?: string;
     onProgress?: (p: EmbedProgress) => void;
+    signal?: AbortSignal;
   } = {},
 ): Promise<NoteEmbedding[]> {
   const model = opts.model ?? DEFAULT_MODEL;
@@ -62,6 +63,9 @@ export async function embedVault(
   const out: NoteEmbedding[] = [];
 
   for (let i = 0; i < notes.length; i++) {
+    if (opts.signal?.aborted) {
+      throw new DOMException("Embedding canceled by user", "AbortError");
+    }
     const note = notes[i];
     opts.onProgress?.({
       note: { path: note.entry.path, index: i, total: notes.length },

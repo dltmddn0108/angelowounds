@@ -258,6 +258,39 @@ describe("suggest pipeline — mocked Claude", () => {
     expect(result.suggestions.length).toBe(0);
   });
 
+  it("stops at next batch boundary when signal is aborted", async () => {
+    const notes = [
+      makeNote("a.md", "a"),
+      makeNote("b.md", "b"),
+      makeNote("c.md", "c"),
+      makeNote("d.md", "d"),
+    ];
+    const candidates: CandidateSet[] = notes.map((n) => ({
+      sourcePath: n.entry.path,
+      candidates: [],
+    }));
+
+    const ctl = new AbortController();
+    let callCount = 0;
+    createMock.mockImplementation(async () => {
+      callCount += 1;
+      // Abort after the first batch completes.
+      if (callCount === 1) ctl.abort();
+      return makeMockToolResponse("x.md", []);
+    });
+
+    await runSuggestionPipeline(notes, candidates, {
+      apiKey: "sk-ant-fake",
+      model: "claude-sonnet-4-5-20250514",
+      batchSize: 1,
+      signal: ctl.signal,
+    });
+
+    // Only the first batch should have been called; the abort check fires
+    // at the top of the next loop iteration.
+    expect(callCount).toBe(1);
+  });
+
   it("aggregates token totals across multiple batches", async () => {
     const notes = [makeNote("a.md", "a"), makeNote("b.md", "b")];
     const candidates: CandidateSet[] = notes.map((n) => ({

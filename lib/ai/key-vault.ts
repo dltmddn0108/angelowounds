@@ -38,18 +38,32 @@ async function getOrCreateWrapKey(): Promise<CryptoKey> {
 }
 
 export async function saveApiKey(apiKey: string): Promise<void> {
-  if (!apiKey.startsWith("sk-ant-")) {
-    throw new Error("Invalid Anthropic API key format — expected sk-ant-…");
+  const trimmed = apiKey.trim();
+  if (trimmed.length < 20) {
+    throw new Error("API 키가 너무 짧습니다.");
   }
+  // We deliberately do NOT enforce the `sk-ant-` prefix: if Anthropic ever
+  // rotates their key format the app should still accept new keys rather
+  // than locking users out. Actual validity is checked at first API call.
   const wrapKey = await getOrCreateWrapKey();
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const ciphertext = await crypto.subtle.encrypt(
     { name: "AES-GCM", iv },
     wrapKey,
-    new TextEncoder().encode(apiKey),
+    new TextEncoder().encode(trimmed),
   );
   const stored: Stored = { iv, ciphertext };
   await set(CIPHERTEXT_NAME, stored);
+}
+
+/** Best-effort prefix check. Returns a human warning if the key looks wrong. */
+export function apiKeyWarning(apiKey: string): string | null {
+  const trimmed = apiKey.trim();
+  if (trimmed.length === 0) return null;
+  if (!trimmed.startsWith("sk-ant-")) {
+    return "Anthropic 키는 보통 sk-ant- 로 시작합니다. 그래도 저장할 수 있지만 호출이 실패할 수 있습니다.";
+  }
+  return null;
 }
 
 export async function loadApiKey(): Promise<string | null> {

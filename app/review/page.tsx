@@ -157,15 +157,27 @@ export default function ReviewPage() {
   }
 
   async function undoAll() {
-    if (!vault) return;
+    if (!vault) {
+      setError("보관함 연결이 풀렸습니다.");
+      return;
+    }
+    setError(null);
+    const failures: string[] = [];
     for (const entry of undoLog) {
       try {
         await writeNoteBytes(vault, entry.path, entry.previous);
       } catch (e) {
-        console.error(e);
+        failures.push(`${entry.path}: ${(e as Error).message}`);
       }
     }
-    clearUndo();
+    if (failures.length === 0) {
+      clearUndo();
+    } else {
+      setError(
+        `Undo 중 ${failures.length}개 파일 복원 실패 — ${failures.join("; ")}`,
+      );
+      // Keep the undo log so the user can retry.
+    }
   }
 
   return (

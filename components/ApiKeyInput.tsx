@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { clearApiKey, hasApiKey, loadApiKey, saveApiKey } from "@/lib/ai/key-vault";
+import { apiKeyWarning, clearApiKey, hasApiKey, loadApiKey, saveApiKey } from "@/lib/ai/key-vault";
 
 interface Props {
   onChange?: (hasKey: boolean) => void;
@@ -12,6 +12,7 @@ export default function ApiKeyInput({ onChange }: Props) {
   const [input, setInput] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
 
   useEffect(() => {
     hasApiKey().then((v) => {
@@ -84,7 +85,10 @@ export default function ApiKeyInput({ onChange }: Props) {
             type="password"
             placeholder="sk-ant-…"
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={(e) => {
+              setInput(e.target.value);
+              setWarning(apiKeyWarning(e.target.value));
+            }}
             className="flex-1 rounded border border-neutral-300 bg-white px-3 py-2 font-mono text-sm dark:border-neutral-700 dark:bg-neutral-950"
           />
           <button
@@ -97,6 +101,7 @@ export default function ApiKeyInput({ onChange }: Props) {
         </div>
       )}
       {message && <p className="text-xs text-emerald-600">{message}</p>}
+      {warning && !stored && <p className="text-xs text-amber-600">{warning}</p>}
       {error && <p className="text-xs text-red-600">{error}</p>}
     </section>
   );
