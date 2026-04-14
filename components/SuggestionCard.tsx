@@ -5,9 +5,11 @@ import { useReviewStore, type ReviewItem } from "@/lib/store/review";
 
 interface Props {
   item: ReviewItem;
+  sourceText?: string;
+  focused?: boolean;
 }
 
-export default function SuggestionCard({ item }: Props) {
+export default function SuggestionCard({ item, sourceText, focused }: Props) {
   const setStatus = useReviewStore((s) => s.setStatus);
   const updateAnchor = useReviewStore((s) => s.updateAnchor);
 
@@ -20,7 +22,10 @@ export default function SuggestionCard({ item }: Props) {
 
   return (
     <article
-      className={`space-y-2 rounded border p-3 text-sm transition-all duration-300 hover:shadow-md ${statusTone}`}
+      data-review-item={item.id}
+      className={`space-y-2 rounded border p-3 text-sm transition-all duration-300 hover:shadow-md ${statusTone} ${
+        focused ? "ring-2 ring-blue-400 dark:ring-blue-500" : ""
+      }`}
     >
       <header className="flex items-center gap-2">
         <span className="font-mono text-xs text-neutral-500">
@@ -41,7 +46,7 @@ export default function SuggestionCard({ item }: Props) {
           {(item.confidence * 100).toFixed(0)}%
         </span>
       </header>
-      <DiffHunk item={item} />
+      <DiffHunk item={item} sourceText={sourceText} />
       <p className="text-xs text-neutral-600 dark:text-neutral-400">
         {item.reasoning}
       </p>

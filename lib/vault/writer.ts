@@ -133,9 +133,23 @@ function appendSeeAlsoSection(
   const m = content.match(headerRe);
   const bullets = targets.join("\n");
   if (m) {
-    // Insert bullets immediately after the existing header line.
-    const insertAt = (m.index ?? 0) + m[0].length;
-    return content.slice(0, insertAt) + bullets + "\n" + content.slice(insertAt);
+    // A "## See also" section already exists. Append new bullets at the end
+    // of its existing bullet list (just before the next `##` heading, or at
+    // end of file). This preserves the user's existing bullet order and
+    // avoids awkward prepending.
+    const sectionStart = (m.index ?? 0) + m[0].length;
+    // Find end of section: next `## ` heading at column 0, or EOF.
+    const rest = content.slice(sectionStart);
+    const nextHeadingMatch = rest.match(/\n##\s+/);
+    const sectionEnd = nextHeadingMatch
+      ? sectionStart + (nextHeadingMatch.index ?? 0)
+      : content.length;
+    // Trim trailing whitespace inside the section so our bullets line up.
+    const before = content.slice(0, sectionEnd).replace(/\s+$/, "");
+    const after = content.slice(sectionEnd);
+    const sep = before.endsWith("\n") ? "" : "\n";
+    const afterSep = after.startsWith("\n") || after.length === 0 ? "" : "\n";
+    return before + sep + bullets + "\n" + afterSep + after;
   }
   const needsLeadingBreak = content.length > 0 && !content.endsWith("\n");
   const lead = needsLeadingBreak ? "\n\n" : content.endsWith("\n\n") ? "" : "\n";

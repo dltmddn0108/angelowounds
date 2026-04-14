@@ -92,6 +92,10 @@ describe("applySuggestions — safety", () => {
     expect(result.content.match(/^##\s+See also\s*$/gm)?.length).toBe(1);
     expect(result.content).toContain("- [[New]]");
     expect(result.content).toContain("- [[Existing]]");
+    // The existing bullet must come BEFORE the new one (append order).
+    const existingIdx = result.content.indexOf("- [[Existing]]");
+    const newIdx = result.content.indexOf("- [[New]]");
+    expect(existingIdx).toBeLessThan(newIdx);
   });
 
   it("skips duplicates: never re-links a target that already exists", () => {

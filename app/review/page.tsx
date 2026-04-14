@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import ReviewToolbar from "@/components/ReviewToolbar";
 import SuggestionCard from "@/components/SuggestionCard";
-import { useReviewStore } from "@/lib/store/review";
+import { useReviewStore, type ReviewStatus } from "@/lib/store/review";
 import { useSessionStore } from "@/lib/store/session";
 import {
   loadCachedDirectory,
@@ -18,6 +18,7 @@ import { applySuggestions } from "@/lib/vault/writer";
 export default function ReviewPage() {
   const items = useReviewStore((s) => s.items);
   const floor = useReviewStore((s) => s.confidenceFloor);
+  const setStatus = useReviewStore((s) => s.setStatus);
   const recordUndo = useReviewStore((s) => s.recordUndo);
   const clearUndo = useReviewStore((s) => s.clearUndo);
   const undoLog = useReviewStore((s) => s.undoLog);
@@ -31,6 +32,7 @@ export default function ReviewPage() {
   const [applying, setApplying] = useState(false);
   const [stats, setStats] = useState({ applied: 0, demoted: 0, skipped: 0 });
   const [error, setError] = useState<string | null>(null);
+  const [focusIndex, setFocusIndex] = useState(0);
 
   // Attempt to rehydrate vault handle from idb-keyval on mount (page refresh)
   useEffect(() => {
@@ -57,6 +59,69 @@ export default function ReviewPage() {
     }
     return [...map.entries()];
   }, [visible]);
+
+  const sourceTextByPath = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const p of parsed) m.set(p.entry.path, p.source);
+    return m;
+  }, [parsed]);
+
+  // Keep focusIndex inside bounds as visible list changes.
+  useEffect(() => {
+    if (focusIndex >= visible.length) setFocusIndex(Math.max(0, visible.length - 1));
+  }, [visible.length, focusIndex]);
+
+  const setFocusedStatus = useCallback(
+    (status: ReviewStatus) => {
+      const target = visible[focusIndex];
+      if (target) setStatus(target.id, status);
+    },
+    [visible, focusIndex, setStatus],
+  );
+
+  // Keyboard shortcuts: j/k to navigate, a/r/p to mark.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const active = document.activeElement as HTMLElement | null;
+      if (active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA")) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (visible.length === 0) return;
+      switch (e.key) {
+        case "j":
+          e.preventDefault();
+          setFocusIndex((i) => Math.min(visible.length - 1, i + 1));
+          break;
+        case "k":
+          e.preventDefault();
+          setFocusIndex((i) => Math.max(0, i - 1));
+          break;
+        case "a":
+          e.preventDefault();
+          setFocusedStatus("accepted");
+          setFocusIndex((i) => Math.min(visible.length - 1, i + 1));
+          break;
+        case "r":
+          e.preventDefault();
+          setFocusedStatus("rejected");
+          setFocusIndex((i) => Math.min(visible.length - 1, i + 1));
+          break;
+        case "p":
+          e.preventDefault();
+          setFocusedStatus("pending");
+          break;
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [visible, setFocusedStatus]);
+
+  // Scroll focused card into view.
+  useEffect(() => {
+    const target = visible[focusIndex];
+    if (!target) return;
+    const el = document.querySelector(`[data-review-item="${target.id}"]`);
+    el?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [focusIndex, visible]);
 
   async function applyAccepted() {
     if (!vault) {
@@ -198,6 +263,24 @@ export default function ReviewPage() {
         skipped={stats.skipped}
       />
 
+      {visible.length > 0 && (
+        <p className="text-xs text-neutral-500">
+          키보드: <kbd className="rounded border px-1">j</kbd>/
+          <kbd className="rounded border px-1">k</kbd> 이동 ·{" "}
+          <kbd className="rounded border px-1">a</kbd> 수락 ·{" "}
+          <kbd className="rounded border px-1">r</kbd> 거절 ·{" "}
+          <kbd className="rounded border px-1">p</kbd> 보류
+        </p>
+      )}
+
+      {undoLog.length > 0 && (
+        <p className="text-xs text-neutral-500">
+          원본은 보관함 내 <code>.auto-linker-backup/</code> 폴더에 보관됩니다.
+          디스크 용량이 걱정되면 주기적으로 오래된 타임스탬프 폴더를
+          수동으로 정리해 주세요.
+        </p>
+      )}
+
       {error && (
         <div className="rounded border border-red-400 bg-red-50 p-4 text-sm text-red-900 dark:border-red-500/40 dark:bg-red-950/30 dark:text-red-200">
           {error}
@@ -226,7 +309,12 @@ export default function ReviewPage() {
           <h2 className="font-mono text-sm text-neutral-500">{source}</h2>
           <div className="space-y-2">
             {group.map((it) => (
-              <SuggestionCard key={it.id} item={it} />
+              <SuggestionCard
+                key={it.id}
+                item={it}
+                sourceText={sourceTextByPath.get(it.sourcePath)}
+                focused={visible[focusIndex]?.id === it.id}
+              />
             ))}
           </div>
         </section>
