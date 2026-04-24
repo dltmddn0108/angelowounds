@@ -1,0 +1,6 @@
+build/
+*.epub
+*.pdf
+*.html
+!publish/*.html
+.DS_Store

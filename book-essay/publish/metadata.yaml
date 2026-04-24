@@ -1,0 +1,31 @@
+---
+# Pandoc 메타데이터. EPUB/HTML/PDF 빌드 시 공통으로 사용한다.
+# TODO: 발행 직전 실제 값으로 교체할 것.
+
+title: "TODO — 책 제목"
+subtitle: "TODO — 부제 (없으면 삭제)"
+author:
+  - "TODO — 저자명"
+date: "TODO — YYYY-MM-DD"
+lang: ko-KR
+rights: "© TODO — 저자명, YYYY. All rights reserved."
+publisher: "TODO — 출판사 또는 독립출판"
+# ISBN 또는 임시 식별자. 발행 전에는 프로젝트 URL 등을 써도 무방.
+identifier: "TODO — urn:isbn:... 또는 https://..."
+
+# 표지 이미지 (선택). publish/cover.jpg 혹은 .png 로 두면 EPUB 표지로 들어간다.
+cover-image: publish/cover.jpg
+
+# EPUB 목차 깊이
+toc: true
+toc-depth: 2
+
+# 전자책 키워드·분류. 서점 등록 시 활용.
+subject:
+  - "TODO — 분야 키워드"
+description: |
+  TODO — 책 소개 3~5줄.
+  뒤표지·상세페이지에도 재사용된다.
+
+# CSS (EPUB/HTML 공통)
+stylesheet: publish/epub.css

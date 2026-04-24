@@ -20,7 +20,49 @@ claude
 
 - `meta/` — 책 설계 문서
 - `chapters/` — 원고 본문
-- `.claude/agents/` — 집필 전담 서브에이전트
+- `publish/` — 발행 메타데이터·판권지·표지·CSS
+- `scripts/` — 빌드 스크립트 (`assemble.sh`, `build.sh`)
+- `.claude/agents/` — 집필·교정 전담 서브에이전트
 - `.claude/commands/` — 슬래시 커맨드
 
 상세한 작업 규칙은 `CLAUDE.md` 참고.
+
+## 발행 (빌드)
+
+### 필요 도구
+
+| 포맷 | 필요 도구 |
+|---|---|
+| EPUB | `pandoc` |
+| HTML | `pandoc` |
+| PDF  | `pandoc` + `xelatex` (TeX Live) + CJK 폰트 |
+
+macOS: `brew install pandoc`, PDF 는 `brew install --cask mactex`
+Ubuntu/Debian: `sudo apt install pandoc texlive-xetex fonts-noto-cjk`
+
+### 빌드
+
+```bash
+make epub          # EPUB
+make html          # 단일 HTML (리소스 임베드)
+make pdf           # PDF (A5)
+make all           # 셋 다
+make clean         # build/ 삭제
+```
+
+직접 스크립트를 호출해도 된다.
+
+```bash
+./scripts/build.sh epub
+FONT="본명조" ./scripts/build.sh pdf   # 폰트 교체
+```
+
+### 발행 전 체크리스트
+
+- [ ] `publish/metadata.yaml` TODO 모두 교체
+- [ ] `publish/colophon.md` 판권지 TODO 모두 교체
+- [ ] `publish/cover.jpg` 혹은 `.png` 존재 (최소 1000×1600)
+- [ ] `/proofread all` 통과
+- [ ] `meta/glossary.md` 와 본문 표기 일치
+- [ ] EPUB 실제 뷰어에서 목차·페이지 넘김 확인
+- [ ] PDF 인쇄 규격(판형·여백·폰트 임베드) 확인
